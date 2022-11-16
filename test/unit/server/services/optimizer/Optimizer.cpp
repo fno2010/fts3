@@ -196,6 +196,27 @@ public:
         return totalSize;
     }
 
+    std::string getPairProject(const Pair &pair) {
+        // TODO: mock function for unit test
+        return "project0";
+    }
+
+    void getPairLinks(const Pair &pair, std::vector<std::string> &link_ids) {
+        // TODO: mock function for unit test
+        return;
+    }
+
+    void getPairBWLimits(const Pair &pair, std::map<std::string, double> &link_limits) {
+        // TODO: mock function for unit test
+        return;
+    }
+
+    void getPairLimitOnPLinks(const Pair &pair, time_t windowStart,
+        std::map<std::string, TransferredStat> &thr_map) {
+        // TODO: mock function for unit test
+        return;
+    }
+
     time_t getAverageDuration(const Pair &pair, const boost::posix_time::time_duration &interval) {
         auto tsi = transferStore.find(pair);
         if (tsi == transferStore.end()) {
