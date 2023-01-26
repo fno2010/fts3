@@ -25,6 +25,8 @@
 #include "common/Logger.h"
 #include "sociConversions.h"
 
+#include <unordered_set>
+
 using namespace db;
 using namespace fts3;
 using namespace fts3::common;
@@ -36,11 +38,11 @@ static void setNewOptimizerValue(soci::session &sql,
 {
     sql.begin();
     sql <<
-        "INSERT INTO t_optimizer (source_se, dest_se, active, ema, datetime) "
-        "VALUES (:source, :dest, :active, :ema, UTC_TIMESTAMP()) "
+        "INSERT INTO t_optimizer (source_se, dest_se, vo_name, active, ema, datetime) "
+        "VALUES (:source, :dest, :vo_name, :active, :ema, UTC_TIMESTAMP()) "
         "ON DUPLICATE KEY UPDATE "
         "   active = :active, ema = :ema, datetime = UTC_TIMESTAMP()",
-        soci::use(pair.source, "source"), soci::use(pair.destination, "dest"),
+        soci::use(pair.source, "source"), soci::use(pair.destination, "dest"), soci::use(pair.vo, "vo_name"),
         soci::use(optimizerDecision, "active"), soci::use(ema, "ema");
     sql.commit();
 }
@@ -53,18 +55,18 @@ static void updateOptimizerEvolution(soci::session &sql,
     try {
         sql.begin();
         sql << " INSERT INTO t_optimizer_evolution "
-            " (datetime, source_se, dest_se, "
+            " (datetime, source_se, dest_se, vo_name"
             "  ema, active, throughput, success, "
             "  filesize_avg, filesize_stddev, "
             "  actual_active, queue_size, "
             "  rationale, diff) "
             " VALUES "
-            " (UTC_TIMESTAMP(), :source, :dest, "
+            " (UTC_TIMESTAMP(), :source, :dest, :vo_name"
             "  :ema, :active, :throughput, :success, "
             "  :filesize_avg, :filesize_stddev, "
             "  :actual_active, :queue_size, "
             "  :rationale, :diff)",
-            soci::use(pair.source), soci::use(pair.destination),
+            soci::use(pair.source), soci::use(pair.destination), soci::use(pair.vo),
             soci::use(newState.ema), soci::use(active), soci::use(newState.throughput), soci::use(newState.successRate),
             soci::use(newState.filesizeAvg), soci::use(newState.filesizeStdDev),
             soci::use(newState.activeCount), soci::use(newState.queueSize),
@@ -89,8 +91,8 @@ static int getCountInState(soci::session &sql, const Pair &pair, const std::stri
     int count = 0;
 
     sql << "SELECT count(*) FROM t_file "
-    "WHERE source_se = :source AND dest_se = :dest_se AND file_state = :state",
-    soci::use(pair.source), soci::use(pair.destination), soci::use(state), soci::into(count);
+    "WHERE source_se = :source AND dest_se = :dest_se AND vo_name = :vo_name AND file_state = :state",
+    soci::use(pair.source), soci::use(pair.destination), soci::use(pair.vo), soci::use(state), soci::into(count);
 
     return count;
 }
@@ -120,8 +122,7 @@ public:
         );
 
         for (auto i = rs.begin(); i != rs.end(); ++i) {
-            result.push_back(Pair(i->get<std::string>("source_se"), i->get<std::string>("dest_se"),
-                                  i->get<std::string>("vo_name")));
+            result.push_back(Pair(i->get<std::string>("source_se"), i->get<std::string>("dest_se"), i->get<std::string>("vo_name")));
         }
 
         return result;
@@ -132,6 +133,7 @@ public:
         return getOptimizerModeInner(sql, source, dest);
     }
 
+    // TODO: update to use vo_name? 
     void getPairLimits(const Pair &pair, Range *range, StorageLimits *limits) {
         soci::indicator nullIndicator;
 
@@ -178,8 +180,8 @@ public:
         int currentActive = 0;
 
         sql << "SELECT active FROM t_optimizer "
-            "WHERE source_se = :source AND dest_se = :dest_se",
-            soci::use(pair.source),soci::use(pair.destination),
+            "WHERE source_se = :source AND dest_se = :dest_se AND vo_name = :vo_name",
+            soci::use(pair.source),soci::use(pair.destination),soci::use(pair.vo),
             soci::into(currentActive, isCurrentNull);
 
         if (isCurrentNull == soci::i_null) {
@@ -213,9 +215,8 @@ public:
         return pid;
     }
 
-    void getTcnPipeResource(const Pair &pair, std::vector<std::string> &usedResources) {
-        usedResources.clear();
-
+    std::vector<std::string> getTcnPipeResource(const Pair &pair) {
+        std::vector<std::string> retval;
         soci::rowset<soci::row> resources = (sql.prepare <<
             "SELECT resc_id FROM t_tcn_resource_use "
             " WHERE source_se = :source_se AND dest_se = :dest_se",
@@ -225,12 +226,13 @@ public:
         for (auto j = resources.begin(); j != resources.end(); ++j) {
             auto rescId = j->get<std::string>("resc_id");
 
-            usedResources.push_back(rescId);
+            retval.push_back(rescId);
         }
+        return retval;
     }
 
-    void getTcnResourceSpec(const std::string &project, std::map<std::string, double> &resourceConstraints) {
-        resourceConstraints.clear();
+    std::map<std::string, double> getTcnResourceSpec(const std::string &project) {
+        std::map<std::string, double> retval;
 
         soci::rowset<soci::row> specs = (sql.prepare <<
             "SELECT resc_id, max_usage from t_tcn_resource_ctrlspec "
@@ -241,8 +243,9 @@ public:
             auto rescId = i->get<std::string>("resc_id");
             auto capacity = i->get<double>("max_usage");
 
-            resourceConstraints[rescId] = capacity;
+            retval[rescId] = capacity;
         }
+        return retval;
     }
 
     int64_t getTransferredInfo(const Pair &pair, time_t windowStart) {
@@ -301,6 +304,79 @@ public:
         return totalBytes;
     }
 
+	// gets number of bytes scheduled to be transferred within a given window
+	// this includes bytes that have not yet been transferred
+	int64_t getBytesToTransferInfo(const Pair &pair, time_t windowStart) {
+        static struct tm nulltm = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+        time_t now = time(NULL);
+        time_t total_seconds = now - windowStart;
+
+        soci::rowset<soci::row> transfers =
+            (sql.prepare
+                 << "SELECT filesize "
+                    " FROM t_file "
+                    " WHERE "
+                    "   source_se = :sourceSe AND dest_se = :destSe AND "
+                    "   vo_name = :voName AND "
+                    "file_state = 'ACTIVE' "
+                    "UNION ALL "
+                    "SELECT filesize "
+                    " FROM t_file USE INDEX(idx_finish_time)"
+                    " WHERE "
+                    "   source_se = :sourceSe AND dest_se = :destSe "
+                    "   AND vo_name = :voName "
+                    "   AND file_state IN ('FINISHED', 'ARCHIVING') AND "
+                    "finish_time >= (UTC_TIMESTAMP() - INTERVAL :interval "
+                    "SECOND)",
+             soci::use(pair.source, "sourceSe"),
+             soci::use(pair.destination, "destSe"),
+             soci::use(pair.vo, "voName"),
+             soci::use(total_seconds, "interval"));
+
+        int64_t totalBytes = 0;
+
+        for (auto j = transfers.begin(); j != transfers.end(); ++j) {
+            auto filesize = j->get<long long>("filesize", 0.0);
+            totalBytes += filesize;
+        }
+        return totalBytes;
+    }
+
+    // returns throughput limits per project per link
+    double getTputLimits(std::string projId, std::string plinkId)
+    {
+        double retval = 0;
+        soci::rowset<soci::row> links = (sql.prepare <<
+        "SELECT max_throughput "
+        " FROM t_bounds "
+        " WHERE "
+        "   proj_id = :projId AND plink_id = :plinkId",
+        soci::use(projId, "projId"), soci::use(plinkId, "plinkId"),
+        soci::into(retval));
+
+        return retval;
+    }
+
+    std::unordered_set<std::string> getLinks(std::string src, std::string dst)
+    {
+        soci::rowset<soci::row> links = (sql.prepare <<
+        "SELECT plink_id "
+        " FROM t_routing "
+        " WHERE "
+        "   source_se = :sourceSe AND dest_se = :destSe",
+        soci::use(pair.source, "sourceSe"), soci::use(pair.destination, "destSe"));
+
+        std::unordered_set<std::string> retval;
+
+        for (auto j = links.begin(); j != links.end(); ++j) {
+            retval.insert(j->get<std::string>("plink_id", ""));
+;
+        }
+
+        return retval;
+    }
+
     void getThroughputInfo(const Pair &pair, const boost::posix_time::time_duration &interval,
         double *throughput, double *filesizeAvg, double *filesizeStdDev)
     {
@@ -315,14 +391,14 @@ public:
         "SELECT start_time, finish_time, transferred, filesize "
         " FROM t_file "
         " WHERE "
-        "   source_se = :sourceSe AND dest_se = :destSe AND file_state = 'ACTIVE' "
+        "   source_se = :sourceSe AND dest_se = :destSe AND vo_name = :vo_name AND file_state = 'ACTIVE' "
         "UNION ALL "
         "SELECT start_time, finish_time, transferred, filesize "
         " FROM t_file USE INDEX(idx_finish_time)"
         " WHERE "
-        "   source_se = :sourceSe AND dest_se = :destSe "
+        "   source_se = :sourceSe AND dest_se = :destSe AND vo_name = :vo_name"
         "   AND file_state IN ('FINISHED', 'ARCHIVING') AND finish_time >= (UTC_TIMESTAMP() - INTERVAL :interval SECOND)",
-        soci::use(pair.source, "sourceSe"), soci::use(pair.destination, "destSe"),
+        soci::use(pair.source, "sourceSe"), soci::use(pair.destination, "destSe"), soci::use(pair.vo, "vo_name"),
         soci::use(interval.total_seconds(), "interval"));
 
         int64_t totalBytes = 0;
@@ -387,10 +463,10 @@ public:
         soci::indicator isNullAvg = soci::i_ok;
 
         sql << "SELECT AVG(tx_duration) FROM t_file USE INDEX(idx_finish_time)"
-            " WHERE source_se = :source AND dest_se = :dest AND file_state IN ('FINISHED', 'ARCHIVING') AND "
+            " WHERE source_se = :source AND dest_se = :dest AND vo_name = :vo_name AND file_state IN ('FINISHED', 'ARCHIVING') AND "
             "   tx_duration > 0 AND tx_duration IS NOT NULL AND "
             "   finish_time > (UTC_TIMESTAMP() - INTERVAL :interval SECOND) LIMIT 1",
-            soci::use(pair.source), soci::use(pair.destination), soci::use(interval.total_seconds()),
+            soci::use(pair.source), soci::use(pair.destination), soci::use(pair.vo), soci::use(interval.total_seconds()),
             soci::into(avgDuration, isNullAvg);
 
         return avgDuration;
@@ -401,10 +477,10 @@ public:
         soci::rowset<soci::row> rs = (sql.prepare <<
             "SELECT file_state, retry, current_failures AS recoverable FROM t_file USE INDEX(idx_finish_time)"
             " WHERE "
-            "      source_se = :source AND dest_se = :dst AND "
+            "      source_se = :source AND dest_se = :dst AND vo_name = :vo_name AND  "
             "      finish_time > (UTC_TIMESTAMP() - interval :calculateTimeFrame SECOND) AND "
             "file_state <> 'NOT_USED' ",
-            soci::use(pair.source), soci::use(pair.destination), soci::use(interval.total_seconds())
+            soci::use(pair.source), soci::use(pair.destination), soci::use(pair.vo), soci::use(interval.total_seconds())
         );
 
         int nFailedLastHour = 0;
@@ -488,8 +564,8 @@ public:
 
         sql << "UPDATE t_optimizer "
                "SET nostreams = :nostreams, datetime = UTC_TIMESTAMP() "
-               "WHERE source_se = :source AND dest_se = :dest",
-            soci::use(pair.source, "source"), soci::use(pair.destination, "dest"),
+               "WHERE source_se = :source AND dest_se = :dest AND vo_name = :vo_name",
+            soci::use(pair.source, "source"), soci::use(pair.destination, "dest"), soci::use(pair.vo, "vo_name"),
             soci::use(streams, "nostreams");
 
         sql.commit();
