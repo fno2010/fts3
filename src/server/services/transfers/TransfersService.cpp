@@ -298,7 +298,7 @@ static void failUnschedulable(const std::vector<QueueId> &unschedulable)
 
 void TransfersService::executeUrlcopy()
 {
-    std::vector<QueueId> queues, unschedulable;
+    std::vector<QueueId> queues, unschedulable, acQueues;
     boost::thread_group g;
 
     // Bail out as soon as possible if there are too many url-copy processes
@@ -315,7 +315,11 @@ void TransfersService::executeUrlcopy()
 
     try {
       time_t start = time(0); //std::chrono::system_clock::now();
-        DBSingleton::instance().getDBObjectInstance()->getQueuesWithPending(queues);
+        auto db = DBSingleton::instance().getDBObjectInstance();
+        db->getQueuesWithPending(queues);
+        // Get queues requiring admission control
+        queues = db->getQueuesForAdmissionControl(queues, acQueues);
+
         // Breaking determinism. See FTS-704 for an explanation.
         std::random_shuffle(queues.begin(), queues.end());
         // Apply VO shares at this level. Basically, if more than one VO is used the same link,

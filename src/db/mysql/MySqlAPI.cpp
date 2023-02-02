@@ -492,6 +492,59 @@ void MySqlAPI::getQueuesWithPending(std::vector<QueueId>& queues)
 }
 
 
+std::vector<QueueId> MySqlAPI::getQueuesForAdmissionControl(std::vector<QueueId> queues, std::vector<QueueId>& acQueues)
+{
+    soci::session sql(*connectionPool);
+    unsigned acRules;
+    std::string sourceSe;
+    std::string destSe;
+    std::string voName;
+    std::vector<QueueId> traditional;
+
+    try
+    {
+        soci::statement acCheckStmt = (sql.prepare <<
+            "SELECT COUNT(*) FROM t_admission_control "
+            "WHERE source_se = :source_se AND dest_se = :dest_se AND vo_name = :vo_name",
+            soci::use(sourceSe), soci::use(destSe), soci::use(voName), soci::into(acRules));
+
+        for (auto it = queues.begin(); it != queues.end(); ++it)
+        {
+            sourceSe = it->sourceSe;
+            destSe = it->destSe;
+            voName = it->voName;
+
+            acCheckStmt.execute(true);
+            if (acRules > 0) {
+                acQueues.emplace_back(
+                    it->sourceSe,
+                    it->destSe,
+                    it->voName,
+                    it->activeCount
+                );
+            }
+            else {
+                traditional.emplace_back(
+                    it->sourceSe,
+                    it->destSe,
+                    it->voName,
+                    it->activeCount
+                );
+            }
+        }
+    }
+    catch (std::exception& e)
+    {
+        throw UserError(std::string(__func__) + ": Caught exception " + e.what());
+    }
+    catch (...)
+    {
+        throw UserError(std::string(__func__) + ": Caught exception ");
+    }
+    return traditional;
+}
+
+
 void MySqlAPI::getQueuesWithSessionReusePending(std::vector<QueueId>& queues)
 {
     soci::session sql(*connectionPool);
@@ -563,6 +616,29 @@ static int getActiveCount(soci::session& sql, const std::string &source, const s
         soci::into(activeCount);
 
     return activeCount;
+}
+
+
+void MySqlAPI::getAdmissibleTransfers(const std::vector<QueueId>& queues,
+        std::map<std::string, std::list<TransferFile> >& files)
+{
+    soci::session sql(*connectionPool);
+    time_t now = time(NULL);
+    try
+    {
+        // Use start-time fair queueing algorithm to decide which transfers
+        // should be dispatched by admission control in the next iteration
+    }
+    catch (std::exception& e)
+    {
+        files.clear();
+        throw UserError(std::string(__func__) + ": Caught exception " + e.what());
+    }
+    catch (...)
+    {
+        files.clear();
+        throw UserError(std::string(__func__) + ": Caught exception ");
+    }
 }
 
 
