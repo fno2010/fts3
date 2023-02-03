@@ -43,13 +43,13 @@ class TCNOptimizer {
 
         void randomPerturbation(std::map<Pair, PairState>& activePairs, std::map<Pair, int>& perturbations);
 
-        void randomStep(std::map<Pair, PairState> &conns, std::map<Pair, int> &decisions);
+        void randomStep(std::map<Pair, PairState> &conns, std::map<Pair, int> &decisions, std::set<Pair> sleepingPipes);
 
         void boundDecision(std::map<Pair, int> &rawNs);
 
         float alphaT();
 
-        void gradientStep(std::map<Pair, PairState> &conns, std::map<Pair, int> &decisions);
+        void gradientStep(std::map<Pair, PairState> &conns, std::map<Pair, int> &decisions, std::set<Pair> sleepingPipes);
 
         float penaltyValue(float barrier);
 
@@ -58,6 +58,10 @@ class TCNOptimizer {
         float barrierValue(const Pair &pair, const PairState &state);
 
         float aggregatedBarrierPenalty(std::map<Pair, PairState> &conns);
+
+        float atmObjective(std::map<Pair, PairState> &connStates);
+
+        float atmPenalty(std::map<Pair, PairState> &conns);
 
     public:
         TCNOptimizer(std::string penaltyMethod = "linear",
@@ -82,7 +86,7 @@ class TCNOptimizer {
 
         float objective(std::map<Pair, PairState> &connStates);
 
-        void step(std::map<Pair, PairState> &activeTCNPipes, std::map<Pair, int> &decisions);
+        void step(std::map<Pair, PairState> &activeTCNPipes, std::map<Pair, int> &decisions, std::set<Pair> sleepingPipes);
 
         float getUtility(std::map<Pair, PairState> &connStates);
 
@@ -99,6 +103,8 @@ class TCNOptimizer {
         bool getExplorationDecision();
 
         float getExplorationProbability();
+
+        float getAtmUtility(std::map<Pair, PairState> &connStates);
 
         void setLastState(std::map<Pair, PairState> &pushedLastStates);
 

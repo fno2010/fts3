@@ -365,7 +365,7 @@ float TCNOptimizer::atmPenalty(std::map<Pair, PairState> &conns)
     for (auto it = conns.begin(); it != conns.end(); it++) {
 		PairState state = it->second;
 		if (state.resourceLimit >= 0) {
-			diff -= pow(state.throughput-state.resourceLimit, 2)
+			diff -= pow(state.throughput-state.resourceLimit, 2);
 		}
     }
 

@@ -45,7 +45,7 @@ struct Pair {
 
 // Required so it can be used as a key on a std::map
 inline bool operator < (const Pair &a, const Pair &b) {
-    return a.source < b.source || (a.source == b.source && a.destination < b.destination) || (a.source == b.source && a.destination == b.destination && a.vo_name < b.vo_name) ;
+    return a.source < b.source || (a.source == b.source && a.destination < b.destination) || (a.source == b.source && a.destination == b.destination && a.vo < b.vo) ;
 }
 
 inline bool operator == (const Pair &a, const Pair &b) {
@@ -53,7 +53,7 @@ inline bool operator == (const Pair &a, const Pair &b) {
 }
 
 inline std::ostream& operator << (std::ostream &os, const Pair &pair) {
-    return (os << pair.source << " => " << pair.destination << " (" << pair.vo_name << ")");
+    return (os << pair.source << " => " << pair.destination << " (" << pair.vo << ")");
 }
 
 

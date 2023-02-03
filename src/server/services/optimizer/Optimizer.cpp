@@ -183,7 +183,7 @@ void Optimizer::run(void)
 				for(auto link = links.begin(); link != links.end(); link++){
 					auto linkFound = resourceLimits[*i].find(*link);
 					if(linkFound != resourceLimits[*i].end()){
-						double curLimit = resourceLimits[*i][*link];	
+						double curLimit = resourceLimits[*i][*link];
 						if(resourceLimit != -1 && curLimit < resourceLimit){
 							resourceLimit = curLimit;
 						}
@@ -227,7 +227,7 @@ std::map<Pair, DecisionState> Optimizer::runTCNOptimizer(std::map<Pair, PairStat
     std::map<Pair, int> decisions;
     std::map<Pair, DecisionState> decisionVector;
 
-    tcnOptimizer->step(aggregatedPairState, decisions);
+    tcnOptimizer->step(aggregatedPairState, decisions, sleepingPipes);
 
     for (auto it = decisions.begin(); it != decisions.end(); ++it) {
         auto pair = it->first;

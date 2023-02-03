@@ -24,6 +24,7 @@ int main() {
     optimizer.getGradients(checkedGradients);
     cout << checkedGradients.size() << "\n";
     map<Pair, float> conditions;
+    std::set<Pair> sleepingPipes;
     Pair pair1("a", "b");
     Pair pair2("a", "c");
     optimizer.setConditionForPair(pair1, pow(2, 33));
@@ -99,7 +100,7 @@ int main() {
     optimizer.setConditionForPair(singlePair, float(5*pow(2, 30)));
     std::map<Pair, int> optDecision2;
     for (int i = 0; i<1000; i++) {
-        optimizer.step(testState2, optDecision2);
+        optimizer.step(testState2, optDecision2, sleepingPipes);
         cout << std::endl << std::endl <<  "actives: " << testState2[singlePair].activeCount << "\tthr: " << testState2[singlePair].throughput << "\tdecision: " << optDecision2[singlePair] << std::endl << std::endl << std::endl;
         PairState singleState2(0, throughputForSingleConn(optDecision2[singlePair]), 0, 0, 0, optDecision2[singlePair], 0, 0, 0);
         testState2[singlePair] = singleState2;

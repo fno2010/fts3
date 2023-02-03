@@ -376,7 +376,7 @@ public:
         return retval;
     }
 
-    std::unordered_set<std::string> getLinks(std::string src, std::string dst)
+    std::unordered_set<std::string> getLinks(const Pair &pair)
     {
         soci::rowset<soci::row> links = (sql.prepare <<
         "SELECT plink_id "

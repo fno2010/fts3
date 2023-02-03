@@ -58,7 +58,7 @@ public:
 
         msg.source_se = pair.source;
         msg.dest_se = pair.destination;
-		msg.vo_name = pair.vo_name;
+		msg.vo_name = pair.vo;
 
         msg.timestamp = millisecondsSinceEpoch();
 
