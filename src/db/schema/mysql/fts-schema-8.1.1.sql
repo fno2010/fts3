@@ -607,11 +607,12 @@ DROP TABLE IF EXISTS `t_optimizer`;
 CREATE TABLE `t_optimizer` (
   `source_se` varchar(150) NOT NULL,
   `dest_se` varchar(150) NOT NULL,
+  `vo_name` varchar(50) NOT NULL,
   `datetime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `ema` double DEFAULT '0',
   `active` int DEFAULT '2',
   `nostreams` int DEFAULT '1',
-  PRIMARY KEY (`source_se`,`dest_se`)
+  PRIMARY KEY (`source_se`,`dest_se`,`vo_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -626,6 +627,7 @@ CREATE TABLE `t_optimizer_evolution` (
   `datetime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `source_se` varchar(150) DEFAULT NULL,
   `dest_se` varchar(150) DEFAULT NULL,
+  `vo_name` varchar(50) NOT NULL,
   `active` int DEFAULT NULL,
   `throughput` float DEFAULT NULL,
   `success` float DEFAULT NULL,
@@ -636,7 +638,7 @@ CREATE TABLE `t_optimizer_evolution` (
   `ema` double DEFAULT NULL,
   `filesize_avg` double DEFAULT NULL,
   `filesize_stddev` double DEFAULT NULL,
-  KEY `idx_optimizer_evolution` (`source_se`,`dest_se`,`datetime`),
+  KEY `idx_optimizer_evolution` (`source_se`,`dest_se`,`vo_name`,`datetime`),
   KEY `idx_datetime` (`datetime`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;

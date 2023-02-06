@@ -3,6 +3,24 @@
 -- Add "t_bound" table for per-pipe resource control specification
 --
 
+ALTER TABLE `t_optimizer`
+    ADD COLUMN `vo_name` varchar(50) NOT NULL;
+
+ALTER TABLE `t_optimizer`
+    DROP PRIMARY KEY;
+
+ALTER TABLE `t_optimizer`
+    ADD PRIMARY KEY (`source_se`,`dest_se`,`vo_name`);
+
+ALTER TABLE `t_optimizer_evolution`
+    ADD COLUMN `vo_name` varchar(50) NOT NULL;
+
+ALTER TABLE `t_optimizer_evolution`
+    DROP KEY `idx_optimizer_evolution` (`source_se`,`dest_se`,`datetime`);
+
+ALTER TABLE `t_optimizer_evolution`
+    ADD KEY `idx_optimizer_evolution` (`source_se`,`dest_se`,`vo_name`,`datetime`);
+
 DROP TABLE IF EXISTS `t_bound`;
 
 CREATE TABLE `t_bound` (
