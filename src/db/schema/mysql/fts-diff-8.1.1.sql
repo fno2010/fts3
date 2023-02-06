@@ -6,7 +6,7 @@
 DROP TABLE IF EXISTS `t_bound`;
 
 CREATE TABLE `t_bound` (
-	`source_se` varchar(150) NOT NULL,
+    `source_se` varchar(150) NOT NULL,
     `dest_se`   varchar(150) NOT NULL,
     `vo_name`   varchar(50) NOT NULL,
     `proj_id`   varchar(50) NOT NULL,
