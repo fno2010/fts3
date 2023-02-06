@@ -201,20 +201,22 @@ public:
         return "project0";
     }
 
-    void getTcnPipeResource(const Pair &pair, std::vector<std::string> &usedResources) {
+    std::vector<std::string> getTcnPipeResource(const Pair &pair) {
         // TODO: mock function for unit test
-        return;
+        std::vector<std::string> resources;
+        return resources;
     }
 
-    void getTcnResourceSpec(const std::string &project, std::map<std::string, double> &resourceConstraints) {
+    std::map<std::string, double> getTcnResourceSpec(const std::string &project) {
         // TODO: mock function for unit test
-        return;
+        std::map<std::string, double> resourceConstraints;
+        return resourceConstraints;
     }
 
-    void getPairLimitOnPLinks(const Pair &pair, time_t windowStart,
-        std::map<std::string, TransferredStat> &thr_map) {
+    std::map<std::string, double> getTcnPipeBound(const Pair &pair) {
         // TODO: mock function for unit test
-        return;
+        std::map<std::string, double> bounds;
+        return bounds;
     }
 
     time_t getAverageDuration(const Pair &pair, const boost::posix_time::time_duration &interval) {
