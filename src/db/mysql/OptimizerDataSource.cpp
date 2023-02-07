@@ -55,13 +55,13 @@ static void updateOptimizerEvolution(soci::session &sql,
     try {
         sql.begin();
         sql << " INSERT INTO t_optimizer_evolution "
-            " (datetime, source_se, dest_se, vo_name"
+            " (datetime, source_se, dest_se, vo_name, "
             "  ema, active, throughput, success, "
             "  filesize_avg, filesize_stddev, "
             "  actual_active, queue_size, "
             "  rationale, diff) "
             " VALUES "
-            " (UTC_TIMESTAMP(), :source, :dest, :vo_name"
+            " (UTC_TIMESTAMP(), :source, :dest, :vo_name, "
             "  :ema, :active, :throughput, :success, "
             "  :filesize_avg, :filesize_stddev, "
             "  :actual_active, :queue_size, "
