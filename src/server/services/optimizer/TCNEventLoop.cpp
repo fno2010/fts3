@@ -406,9 +406,9 @@ ConcurrencyVector TCNEventLoop::step(){
 		measureInfos.push_back(measureInfo);
 		double variance; 
 
-		FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: phase " << phase << commit;
 		switch(phase){
 		case TCNEventPhase::estTOld:
+			FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: phase estTOld" << commit;
 			if(cur_n != n_old) {
 				// our concurrency vector is out of date.
 				// either a pipe has stopped being backlogged, or we are
@@ -448,6 +448,7 @@ ConcurrencyVector TCNEventLoop::step(){
 			}
 			break;
 		case TCNEventPhase::estTNew:
+			FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: phase estTNew" << commit;
 			if(cur_n != n_old) {
 				// our concurrency vector is out of date.
 				// either a pipe has stopped being backlogged, or we are
@@ -480,6 +481,7 @@ ConcurrencyVector TCNEventLoop::step(){
 			}
 			break;
 		case TCNEventPhase::adjust:
+			FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: phase adjust" << commit;
 			if(prev_n != cur_n) {
 				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: adjust, diff" << commit;
 				int prev_pert_n = 0;
