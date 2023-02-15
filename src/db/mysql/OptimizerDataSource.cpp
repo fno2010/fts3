@@ -259,22 +259,29 @@ public:
                     " SECOND)",
                     soci::use(total_seconds, "interval"));
 
+        FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "getTransferredBytes: sql query done" << commit;
+
             int64_t totalBytes = 0;
             
 
             for (auto j = transfers.begin(); j != transfers.end(); ++j) {
+                FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "getTransferredBytes: iterate active transfer" << commit;
                 auto transferred = j->get<long long>("transferred", 0.0);
                 auto filesize = j->get<long long>("filesize", 0.0);
                 auto starttm = j->get<struct tm>("start_time");
                 auto endtm = j->get<struct tm>("finish_time", nulltm);
 
-                auto source_se = j->get<std::string>('source_se'); 
-                auto dest_se = j->get<std::string>('dest_se');
+                auto source_se = j->get<std::string>("source_se"); 
+                auto dest_se = j->get<std::string>("dest_se");
+
+                FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "getTransferredBytes: read active transfer info" << commit;
 
                 time_t start = timegm(&starttm);
                 time_t end = timegm(&endtm);
                 time_t periodInWindow = 0;
                 long long bytesInWindow = 0;
+
+                FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "getTransferredBytes: check if transfer is finished" << commit;
 
                 // Not finish information
                 if (endtm.tm_year <= 0) {
