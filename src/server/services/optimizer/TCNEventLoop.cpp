@@ -54,6 +54,7 @@ TODO: remove code duplication
 */
 
 ThroughputVector TCNEventLoop::calculateTau(int index) {
+	FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Calculating tau: " << index << commit;
 	try {
 		ThroughputVector retval;
 		if(measureInfos.size() < 2 || index == 0) { return retval; }
@@ -109,6 +110,7 @@ Thus, calculate throughput as follows:
 */
 
 ThroughputVector TCNEventLoop::calculateTput(int index) {
+	FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Calculating throughput: " << index << commit;
 	try {
 		ThroughputVector retval;
 		if(measureInfos.size() < 2 || index == 0) { return retval; }
@@ -158,6 +160,7 @@ TODO: be clever. (Just not now.)
 */
 
 double TCNEventLoop::calculateTputVariance() {
+	FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Calculating variance: " << commit;
 	try {
 		if(measureInfos.size() < 3) { 
 			// need 3 measurements to calculate two throughputs, which are necessary
@@ -216,6 +219,7 @@ double TCNEventLoop::calculateTputVariance() {
 		for(auto it = vars.begin(); it != vars.end(); it++) {
 			if(it->second > maxVar) maxVar = it->second;
 		}
+		FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Done calculating variance: "<< maxVar << commit;
 		return maxVar;
 	}
     catch (std::exception &e) {
@@ -376,8 +380,11 @@ ConcurrencyVector TCNEventLoop::step(){
 		prev_n = cur_n;
 		dataSource->getActiveConcurrencyVector(cur_n);
 
+		FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: getActiveConcurrencyVector done" << commit;
+
 		if(cur_n.size() == 0){
 			// if no active connections scheduled, then set every pipe to 1 connection
+			FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: empty cur_n" << commit;
 			std::list<Pair> pairs = dataSource->getActivePairs();
 			// Make sure the order is always the same
 			// See FTS-1094
@@ -388,13 +395,18 @@ ConcurrencyVector TCNEventLoop::step(){
 			return cur_n;
 		}
 
+
 		// get measurements
 		TCNMeasureInfo measureInfo;
+
+		FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: before getTransferredBytes" << commit;
 		dataSource->getTransferredBytes(measureInfo.bytesSentVector, qosIntervalStartTime);
+		FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: after getTransferredBytes" << commit;
 		measureInfo.measureTime = std::time(NULL);
 		measureInfos.push_back(measureInfo);
 		double variance; 
 
+		FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: phase " << phase << commit;
 		switch(phase){
 		case TCNEventPhase::estTOld:
 			if(cur_n != n_old) {
@@ -402,6 +414,7 @@ ConcurrencyVector TCNEventLoop::step(){
 				// either a pipe has stopped being backlogged, or we are
 				// initializing.
 				// either way, set our new n_old to be cur_n
+				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: estTOld, diff" << commit;
 				
 				// reset
 				measureInfos.clear();
@@ -411,16 +424,20 @@ ConcurrencyVector TCNEventLoop::step(){
 				break;
 			}
 		
+			FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: estTOld, before calculateTputVariance" << commit;
 			variance = calculateTputVariance();
-			if(variance < convergeVariance &&
+			FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: estTOld, after calculateTputVariance" << commit;
+			if(variance > 0 && variance < convergeVariance &&
 				std::time(NULL)-epochStartTime > estTOldMinTime){
 
 				// we have converged
 
+				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: estTOld, converged" << commit;
 				T_old = calculateTput(-1);
 
 				// perturb a new pipe
 				measureInfos.clear();
+				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: estTOld, perturb a new pipe" << commit;
 				do {
 					pertPair = choosePertPair(T_old);
 					n_new = n_old;
@@ -437,6 +454,7 @@ ConcurrencyVector TCNEventLoop::step(){
 				// initializing.
 				// either way, set our new n_old to be cur_n
 				
+				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: estTNew, diff" << commit;
 				// reset
 				measureInfos.clear();
 				epochStartTime = std::time(NULL);
@@ -449,16 +467,21 @@ ConcurrencyVector TCNEventLoop::step(){
 			variance = calculateTputVariance();
 			if(variance < convergeVariance){
 				// we have converged
+				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: estTNew, converged" << commit;
 				T_new = calculateTput(-1);
 				// calculate gradient
 				measureInfos.clear();
+				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: estTNew, before gradStep" << commit;
 				n_target = gradStep();
+				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: estTNew, after gradStep" << commit;
 				setOptimizerDecision(n_target);
 				phase = TCNEventPhase::adjust;
+				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: estTNew, switch to adjust phase" << commit;
 			}
 			break;
 		case TCNEventPhase::adjust:
 			if(prev_n != cur_n) {
+				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: adjust, diff" << commit;
 				int prev_pert_n = 0;
 				if(prev_n.count(pertPair) > 0) { prev_pert_n = prev_n[pertPair]; }
 				int cur_pert_n = 0;
@@ -466,6 +489,7 @@ ConcurrencyVector TCNEventLoop::step(){
 
 				if(prev_pert_n > cur_pert_n) {
 					// pert pipe is decreasing
+					FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: adjust, decreasing" << commit;
 					// if we are already below our target, then this is bad!
 					if(cur_pert_n < n_target[pertPair]) {
 						// cut our losses, reset to estTOld
@@ -490,6 +514,7 @@ ConcurrencyVector TCNEventLoop::step(){
 
 			if(n_target == cur_n){
 				//we've reached our target
+				FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Time multiplexing: adjust, reach target" << commit;
 				measureInfos.clear();
 				n_old = n_target;
 				setOptimizerDecision(n_old);
