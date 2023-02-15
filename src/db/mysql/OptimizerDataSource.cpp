@@ -235,11 +235,14 @@ public:
     void getTransferredBytes(std::map<Pair, double> &measureMap, time_t windowStart)
     {
         measureMap.clear(); 
+		FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "getTransferredBytes: clear measureMap" << commit;
 
         static struct tm nulltm = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
         time_t now = time(NULL);
         time_t total_seconds = now - windowStart;
+
+		FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "getTransferredBytes: executing sql query" << commit;
 
         soci::rowset<soci::row> transfers =
             (sql.prepare
@@ -284,14 +287,17 @@ public:
 
                 Pair currentpair(source_se, dest_se, "");
 
+                FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "getTransferredBytes: finding pair " << currentpair << commit;
                 auto idx = measureMap.find(currentpair);
                 if (idx == measureMap.end()) 
                 {
                     // not found    
+                    FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "getTransferredBytes: insert new pair to measureMap" << commit;
                     measureMap.insert(std::pair<Pair, double>(currentpair, (double)bytesInWindow));
                 } 
                 else 
                 {
+                    FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "getTransferredBytes: update exising pair" << commit;
                     idx->second += (double)bytesInWindow;
                 }
                 
