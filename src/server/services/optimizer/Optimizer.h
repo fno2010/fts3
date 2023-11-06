@@ -73,7 +73,7 @@ struct PairState {
     // Optimizer last decision
     int connections;
     double avgTput;
-    
+
     PairState(): timestamp(0), throughput(0), avgDuration(0), successRate(0), retryCount(0), activeCount(0),
                  queueSize(0), ema(0), filesizeAvg(0), filesizeStdDev(0), connections(1), avgTput(0) {}
 
@@ -94,7 +94,7 @@ struct StorageState {
     double inbound_max_throughput;
     int outbound_max_active;
     double outbound_max_throughput;
-    
+
     // int totalDecision;
     // int totalActive;
 
@@ -102,18 +102,18 @@ struct StorageState {
                     asDestThroughput(0), asDestThroughputInst(0),
                     inbound_max_active(0), inbound_max_throughput(0),
                     outbound_max_active(0), outbound_max_throughput(0) {}
-    
+
     StorageState(int ia, double it, int oa, double ot):
         inbound_max_active(ia), inbound_max_throughput(it),
         outbound_max_active(oa), outbound_max_throughput(ot),
         asSourceThroughput(0), asSourceThroughputInst(0),
         asDestThroughput(0), asDestThroughputInst(0) {}
-    
+
     /* StorageState(time_t ts, double st, double sti, double dt, double dti, int td, int ta):
         timestamp(ts), asSourceThroughput(st), asSourceThroughputInst(sti),
         asDestThroughput(dt), asDestThroughputInst(dti),
         totalDecision(td), totalActive(ta) {}
-    */    
+    */
 
     /*friend std::ostream& operator<<(std::ostream& os, const StorageLimits& limits) {
         os << "Source: " << limits.source << "\n"
@@ -166,6 +166,8 @@ public:
     virtual double getThroughputAsSourceInst(const std::string&) = 0;
     virtual double getThroughputAsDestination(const std::string&, const boost::posix_time::time_duration&) = 0;
     virtual double getThroughputAsDestinationInst(const std::string&) = 0;
+    virtual double getThroughputOverNetlink(const std::string&, const boost::posix_time::time_duration&) = 0;
+    virtual double getThroughputOverNetlinkInst(const std::string&) = 0;
 
     // Permanently register the optimizer decision
     virtual void storeOptimizerDecision(const Pair &pair, int activeDecision,
@@ -191,15 +193,15 @@ public:
  * where n: current interval
  *       x(n): input state
  *       y(n): persistent, decision state
- * 
+ *
  * Note that the input state can be broken down into three components
  *     x1(n): is local and will be used only by a pair
  *     x2(n): is also local, but will be needed to compute x3
  *     x3(n): more global state and depends on the sum of x2(n)
- * 
- * At the moment, the optimizer has the following structure 
+ *
+ * At the moment, the optimizer has the following structure
  *     y(n) = f( x1(n), x2(n), x3(n), y(n-1))
- * 
+ *
  * But for sake of clarity, we save the entire vectors:
  *     x_{1,2}(n-1) in memoryPairStateMap
  *     x_{1,2}(n) in currentPairStateMap

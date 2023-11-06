@@ -124,7 +124,7 @@ void Optimizer::run(void)
     }
 }
 
-// Runs runOptimizerForPair for all active pairs, and 
+// Runs runOptimizerForPair for all active pairs, and
 // is responsible for changing decision values.
 void Optimizer::updateDecisions(const std::list<Pair> &pairs) {
     // Update every pair's decision.
