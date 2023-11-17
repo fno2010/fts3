@@ -508,6 +508,21 @@ po::options_description ServerConfigReader::_defineConfigOptions()
         po::value<std::string>( &(_vars["ExperimentalTapeRESTAPI"]) )->default_value("false"),
         "Enable or disable experimental features of the TAPE REST API"
     )
+    (
+        "NetlinkMinActive",
+        po::value<int>()->default_value(1),
+        "Default minimum number of active transfers over a given netlink"
+    )
+    (
+        "NetlinkMaxActive",
+        po::value<int>()->default_value(200),
+        "Default maximum number of active transfers over a given netlink"
+    )
+    (
+        "NetlinkMaxThroughput",
+        po::value<double>()->default_value(1000000),
+        "Default througput limit for transfers over a given netlink"
+    )
     ;
 
     return config;

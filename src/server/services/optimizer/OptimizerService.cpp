@@ -98,6 +98,10 @@ void OptimizerService::runService()
     auto increaseAggressiveStep = config::ServerConfig::instance().get<int>("OptimizerAggressiveIncreaseStep");
     auto decreaseStep = config::ServerConfig::instance().get<int>("OptimizerDecreaseStep");
 
+    auto netlinkMinActive = config::ServerConfig::instance().get<int>("NeltinkMinActive");
+    auto netlinkMaxActive = config::ServerConfig::instance().get<int>("NetlinkMaxActive");
+    auto netlinkMaxThroughput = config::ServerConfig::instance().get<double>("NetlinkMaxThrouput");
+
     OptimizerNotifier optimizerCallbacks(
         config::ServerConfig::instance().get<bool>("MonitoringMessaging"),
         config::ServerConfig::instance().get<std::string>("MessagingDirectory")
@@ -114,6 +118,7 @@ void OptimizerService::runService()
     optimizer.setBaseSuccessRate(baseSuccessRate);
     optimizer.setEmaAlpha(emaAlpha);
     optimizer.setStepSize(increaseStep, increaseAggressiveStep, decreaseStep);
+    optimizer.setDefaultNetlinkLimits(netlinkMinActive, netlinkMaxActive, netlinkMaxThroughput);
 
     while (!boost::this_thread::interruption_requested()) {
         try {

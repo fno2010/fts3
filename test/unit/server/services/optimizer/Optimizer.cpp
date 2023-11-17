@@ -61,12 +61,16 @@ struct MockTransfer {
 };
 typedef std::list<MockTransfer> TransferList;
 
+typedef std::list<Pair> reversedNetlinkTraces;
+
+
 class BaseOptimizerFixture: public OptimizerDataSource, public Optimizer {
 protected:
     std::map<Pair, OptimizerRegister> registry;
     std::map<Pair, int> streamsRegistry;
     std::map<Pair, TransferList> transferStore;
     std::map<std::string, StorageState> mockStorageStore;
+    std::map<std::string, reversedNetlinkTraces> reversedNetlinkTraceStore;
 
     OptimizerMode mockOptimizerMode;
 
@@ -98,6 +102,11 @@ protected:
                 ++i;
             }
         }
+    }
+
+    void populateNetlinkTraces(const Pair &pair, const std::string &netlink) {
+        auto &pairs = reversedNetlinkTraceStore[netlink];
+        pairs.emplace_back(pair);
     }
 
     OptimizerEntry* getLastEntry(const Pair &pair) {
@@ -141,6 +150,15 @@ public:
 
     void getPairLimits(const Pair&, Range *range) {
         range->min = range->max = 0;
+    }
+
+    void getNetlinkLimits(const std::string netlinkName, NetlinkLimits *limits) {
+        limits->minActive = limits->maxActive = 0;
+        limits->maxThroughput = -1;
+    }
+
+    void getOptimizerNetlinkLimits(const std::string netlinkName, NetlinkLimits *limits) {
+        getNetlinkLimits(netlinkName, limits);
     }
 
     int getOptimizerValue(const Pair &pair) {
@@ -339,7 +357,35 @@ public:
             }
         }
         return acc;
-    }    
+    }
+
+    double getThroughputOverNetlink(const std::string &netlink, const boost::posix_time::time_duration &interval) {
+        return getThroughputOverNetlinkInst(netlink);
+    }
+
+    double getThroughputOverNetlinkInst(const std::string &netlink) {
+
+        double acc = 0;
+
+        auto pairs = reversedNetlinkTraceStore[netlink];
+
+        for (auto i = pairs.begin(); i != pairs.end(); ++i) {
+            auto pair = *i;
+            auto tsi = transferStore.find(pair);
+            if (tsi == transferStore.end()) {
+                continue;
+            }
+
+            auto &transfers = tsi->second;
+
+            for (auto j = transfers.begin(); j != transfers.end(); ++j) {
+                if (j->state == "ACTIVE") {
+                    acc += j->throughput;
+                }
+            }
+        }
+        return acc;
+    }
 
     void storeOptimizerDecision(const Pair &pair, int activeDecision,
         const PairState &newState, int diff, const std::string &rationale) {

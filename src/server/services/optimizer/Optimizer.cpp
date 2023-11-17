@@ -92,6 +92,35 @@ void Optimizer::setEmaAlpha(double alpha)
 }
 
 
+void Optimizer::setDefaultNetlinkLimits(int netlinkMinActive, int netlinkMaxActive, double netlinkMaxThroughput)
+{
+    defaultNetlinkMinActive = netlinkMinActive;
+    defaultNetlinkMaxActive = netlinkMaxActive;
+    defaultNetlinkMaxThroughput = netlinkMaxThroughput;
+}
+
+
+void Optimizer::getOptimizerNetlinkLimits(std::string netlinkName, NetlinkLimits *limits)
+{
+    dataSource->getNetlinkLimits(netlinkName, limits);
+
+    if (limits->minActive)
+    {
+        limits->minActive = defaultNetlinkMinActive;
+    }
+
+    if (limits->maxActive)
+    {
+        limits->maxActive = defaultNetlinkMaxActive;
+    }
+
+    if (limits->maxThroughput < 0)
+    {
+        limits->maxThroughput = defaultNetlinkMaxThroughput;
+    }
+}
+
+
 void Optimizer::run(void)
 {
     FTS3_COMMON_LOGGER_NEWLOG(DEBUG) << "Optimizer run" << commit;
@@ -124,7 +153,7 @@ void Optimizer::run(void)
     }
 }
 
-// Runs runOptimizerForPair for all active pairs, and 
+// Runs runOptimizerForPair for all active pairs, and
 // is responsible for changing decision values.
 void Optimizer::updateDecisions(const std::list<Pair> &pairs) {
     // Update every pair's decision.
