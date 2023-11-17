@@ -58,6 +58,14 @@ struct StorageLimits {
               throughputSource(0), throughputDestination(0) {}
 };
 
+
+struct NetlinkLimits {
+    int minActive, maxActive;
+    double maxThroughput;
+
+    NetlinkLimits(): minActive(0), maxActive(0), maxThroughput(0) {}
+};
+
 struct PairState {
     time_t timestamp;
     double throughput;
@@ -141,6 +149,9 @@ public:
 
     // Get configured storage and pair limits
     virtual void getPairLimits(const Pair &pair, Range *range) = 0;
+
+    // Get configured netlink limits
+    virtual void getNetlinkLimits(const std::string, NetlinkLimits*) = 0;
 
     // Get the stored optimizer value (current value)
     virtual int getOptimizerValue(const Pair&) = 0;
@@ -226,6 +237,9 @@ protected:
     int increaseStepSize, increaseAggressiveStepSize;
     double emaAlpha;
 
+    double defaultNetlinkMaxThroughput;
+    int defaultNetlinkMaxActive, defaultNetlinkMinActive;
+
     // Read currentSEStateMap values into a StorageLimits object for the purposes of a single pair.
     void getStorageLimits(const Pair &pair, StorageLimits *limits);
 
@@ -238,6 +252,9 @@ protected:
 
     // Stores into rangeActiveMin and rangeActiveMax the working range for the optimizer
     void getOptimizerWorkingRange(const Pair &pair, const StorageLimits &limits, Range *range);
+
+    // Get netlink limits for a specific 
+    void getOptimizerNetlinkLimits(const std::string netlinkName, NetlinkLimits *limits);
 
     // Updates decision
     void setOptimizerDecision(const Pair &pair, int decision, const PairState &current,
@@ -258,6 +275,7 @@ public:
     void setBaseSuccessRate(int);
     void setStepSize(int increase, int increaseAggressive, int decrease);
     void setEmaAlpha(double);
+    void setDefaultNetlinkLimits(int minActive, int maxActive, double maxThroughput);
     void updateDecisions(const std::list<Pair> &);
     void run(void);
     void runOptimizerForPair(const Pair&);

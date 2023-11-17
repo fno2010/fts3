@@ -152,6 +152,15 @@ public:
         range->min = range->max = 0;
     }
 
+    void getNetlinkLimits(const std::string netlinkName, NetlinkLimits *limits) {
+        limits->minActive = limits->maxActive = 0;
+        limits->maxThroughput = -1;
+    }
+
+    void getOptimizerNetlinkLimits(const std::string netlinkName, NetlinkLimits *limits) {
+        getNetlinkLimits(netlinkName, limits);
+    }
+
     int getOptimizerValue(const Pair &pair) {
         auto i = registry.find(pair);
         if (i == registry.end() || i->second.empty()) {

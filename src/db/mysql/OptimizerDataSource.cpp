@@ -519,6 +519,40 @@ public:
         return throughput;
     }
 
+    // Writes to range object for a specific netlink.
+    void getNetlinkLimits(const std::string netlinkName, NetlinkLimits *netlinkLimits) {
+        // Netlink limits
+        soci::indicator isNullMin, isNullMax;
+        soci::indicator isNullMaxThroughput, isNullCapacity;
+        double maxThroughput, capacity;
+        sql <<
+            "SELECT c.min_active, c.max_active, c.max_throughput, s.capacity "
+            "FROM t_netlink_config c, t_netlink_stat s "
+            "WHERE c.netlink_name = :netlink_name "
+            "AND c.head_ip = s.head_ip AND c.tail_ip = s.tail_ip",
+            soci::use(netlinkName),
+            soci::into(netlinkLimits->minActive, isNullMin), soci::into(netlinkLimits->maxActive, isNullMax),
+            soci::into(maxThroughput, isNullMaxThroughput), soci::into(capacity, isNullCapacity);
+
+        if (isNullMin == soci::i_null || isNullMax == soci::i_null) {
+            netlinkLimits->minActive = netlinkLimits->maxActive = 0;
+        }
+
+        if (isNullMaxThroughput == soci::i_null) {
+            if (isNullCapacity == soci::i_null) {
+                // If maxThroughput < 0, no throughput limit is set for this specific netlink.
+                // The optimizer should use the default value.
+                netlinkLimits->maxThroughput = -1;
+            }
+            else {
+                netlinkLimits->maxThroughput = capacity;
+            }
+        }
+        else {
+            netlinkLimits->maxThroughput = maxThroughput;
+        }
+    }
+
     // Stores value in both the snapshot database t_optimizer as well as t_optimizer_evolution
     void storeOptimizerDecision(const Pair &pair, int activeDecision,
         const PairState &newState, int diff, const std::string &rationale) {
